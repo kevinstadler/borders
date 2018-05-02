@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>borders</title>
+    <base target="_blank">
+    <link rel="stylesheet" href="https://openlayers.org/en/v4.6.5/css/ol.css" type="text/css">
+    <!-- The line below is only needed for old environments like Internet Explorer and Android 4.x -->
+    <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script>
+    <script src="https://openlayers.org/en/v4.6.5/build/ol.js"></script>
+    <script src="https://openlayers.org/en/v4.6.5/examples/resources/mapbox-streets-v6-style.js"></script>
+    <style>
+      .map {
+        width: 80%;
+        margin: auto;
+      }
+      body {
+        font-family: sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map" class="map"></div>
+    <script>
+      var opaqueStyle = new ol.style.Style({
+        fill: new ol.style.Fill({
+            color: "#000b"
+        })
+      });
+      var transparentStyle = opaqueStyle.clone();
+      transparentStyle.getFill().setColor("#0007");
+
+      // residential areas // more data: https://freegisdata.rtwilson.com/#population
+      var urbanLayer = new ol.layer.Vector({
+        source: new ol.source.Vector({
+          format: new ol.format.GeoJSON(),
+          projection: 'EPSG:3857',
+          url: 'data/urban.geojson'
+        }),
+        // natural earth: suitable for zooms 0 to 8
+        minResolution: 1200,
+        style: opaqueStyle
+      });
+      urbanLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
+
+      // var resolutions = ol.tilegrid.createXYZ({maxZoom: 14}).getResolutions().map(function(i) { return i/4 });
+      // console.log(resolutions);
+      var landUseLayer = new ol.layer.VectorTile({
+        source: new ol.source.VectorTile({
+          url: "https://free.tilehosting.com/data/v3/{z}/{x}/{y}.pbf.pict?key=qu62rKisigsebPda2e6b",
+          format: new ol.format.MVT(),
+          // landuse included from zoomLevel 4 (resolution 15000), good quality from zoomLevel 9 (resolution 1200)
+          tileGrid: ol.tilegrid.createXYZ({minZoom: 4, maxZoom: 14 }), //, resolutions: resolutions}),
+          attributions: "&copy; OpenMapTiles &copy; OpenStreetMap contributors"
+          // https://admin.tilehosting.com/data/v3/#0/0/0
+        }),
+        minResolution: 0,
+//        maxResolution: 1200 for zoomLevel 9
+        style: function(feature, resolution) {
+          if (resolution >= 10 && feature.get('layer') == "landuse" && feature.get("class") == "residential") {
+            return transparentStyle;
+          } else if (resolution < 20 && feature.get('layer') == "building") {
+//            console.log(resolution); // buildings visible from zoomLevel 12 (resolution 20)
+            return opaqueStyle;
+          }
+        }
+      });
+//      console.log(landUseLayer.getSource().getTileGrid().getResolutions());
+      // big change 8.4 463 > 8.42 458, also 12 - 13 (31-27 resolution)
+      landUseLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
+
+      // OpenMapTiles: landuse=residential polygons from 
+//      https://free.tilehosting.com/data/v3.json?key=qu62rKisigsebPda2e6b
+
+      var cols = [ "#b58900", "#cb4b16", "#dc322f", "#d33682", "#6c71c4", "#268bd2", "#2aa198", "#859900"];
+
+      function communityStyle(feature, resolution) {
+        return new ol.style.Style({
+          fill: new ol.style.Fill({
+            color: cols[feature.get("MAPCOLOR7")] // 1-7
+          })
+        });
+      }
+
+      var communityLayer = new ol.layer.Vector({
+        source: new ol.source.Vector({
+          format: new ol.format.GeoJSON(),
+          projection: 'EPSG:3857',
+          url: 'data/borders.geojson'
+        }),
+        style: communityStyle
+      });
+
+      // var communityLayer = new ol.layer.VectorTile({
+      //   source: new ol.source.VectorTile({
+      //     url: "data/communities/{z}/{x}/{y}",
+      //     format: new ol.format.MVT(),
+      //     maxZoom: 8
+      //   }),
+      //   style: communityStyle
+      // });
+
+      communityLayer.on("precompose", function(evt) {evt.context.globalCompositeOperation = "source-atop" });
+
+      var labelLayer = null;
+//      labelLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
+
+      var backgroundLayer = new ol.layer.Tile({
+        source: new ol.source.BingMaps({
+          key: "AnzJ8GUrq-Q-tkdVYWFWs-3H9pIyykpZBwnLXyGTXDA8WV6-1kg-veWxC9XBpMAt",
+          imagerySet: "Aerial",
+          maxZoom: 19
+        })
+      });
+      // background drawn behind polygons
+      backgroundLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "destination-over" });
+      backgroundLayer.on("postcompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
+
+      var zoom = 5;
+      var center = ol.proj.fromLonLat([8.0, 48.1]);
+      var rotation = 0;
+      if (window.location.hash !== '') {
+        // try to restore center, zoom-level and rotation from the URL
+        var hash = window.location.hash.replace('#map=', '');
+        var parts = hash.split('/');
+        if (parts.length === 4) {
+          zoom = parseInt(parts[0], 10);
+          center = ol.proj.fromLonLat([parseFloat(parts[1]), parseFloat(parts[2])]);
+          rotation = parseFloat(parts[3]);
+        }
+      }
+
+      var map = new ol.Map({
+        layers: [
+//          urbanLayer,
+          landUseLayer,
+          communityLayer,
+//          labelLayer,
+          backgroundLayer
+        ],
+        target: 'map',
+        view: new ol.View({
+          zoom: zoom,
+          center: center,
+          rotation: rotation,
+          minZoom: 2,
+          maxZoom: 19
+        })
+      });
+
+      map.on("moveend", function(evt) {
+        // /4/ path shows residential at resolution 4891.96981025128, from zoomLevel 4.44
+        console.log(map.getView().getZoom());
+        console.log(map.getView().getResolution());
+        var view = map.getView();
+        var center = ol.proj.toLonLat(view.getCenter());
+        var hash = "#map=" + Math.round(view.getZoom()) + "/" + (Math.round(center[0]*1000) / 1000) + "/" + (Math.round(center[1]*1000) / 1000) + "/" + view.getRotation();
+        location.hash = hash;
+      });
+    </script>
+    <p>On most political maps produced in modern times, nation states and other geo-political bodies are represented by contiguous (filled-in) areas that span all the way to their border to adjacent regions. What such depictions represent is really the theoretical extent of the territory over which a government claims to have <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority. In practice, such authority may rarely or never be exercised over much of the claimed area, particularly when large swathes of it are completely uninhabited. This map explores an arguably more accurate way of representing countries in social terms, namely as all those areas inhabited by people who consider themselves members of the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> that is their nation.</p>
+  </body>
+</html>
