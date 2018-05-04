@@ -99,7 +99,7 @@
         style: (function() {
           var style = new ol.style.Style({
             text: new ol.style.Text({
-              fill: opaqueStyle,
+              fill: new ol.style.Fill({ color: "#fff" }),
               scale: 1.3
             })
           });
@@ -110,7 +110,8 @@
           }
         })()
       });
-      labelLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
+      // destination-out also cool
+      labelLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-atop" });
 
       var backgroundLayer = new ol.layer.Tile({
         source: new ol.source.BingMaps({
