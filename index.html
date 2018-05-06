@@ -32,32 +32,29 @@
             color: "#000b"
         })
       });
-      var transparentStyle = opaqueStyle.clone();
-      transparentStyle.getFill().setColor("#0007");
 
       // http://sedac.ciesin.columbia.edu/data/collection/gpw-v4/sets/browse
       var densityLayer = new ol.layer.Tile({
-        opacity: 0.7,
         source: new ol.source.XYZ({
-          url: "/gpw-tiles/{z}/{x}/{-y}.png",
+          url: "../gpw-tiles/{z}/{x}/{-y}.png",
+          attributions: "NASA Socioeconomic Data and Applications Center (SEDAC)",
           maxZoom: 7
         })
       });
       densityLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
 
       // OpenMapTiles: landuse=residential polygons
-      // var resolutions = ol.tilegrid.createXYZ({maxZoom: 14}).getResolutions().map(function(i) { return i/4 });
-      // console.log(resolutions);
       var landUseLayer = new ol.layer.VectorTile({
         source: new ol.source.VectorTile({
           url: "https://free.tilehosting.com/data/v3/{z}/{x}/{y}.pbf.pict?key=qu62rKisigsebPda2e6b",
           format: new ol.format.MVT(),
           // landuse included from zoomLevel 4 (resolution 15000), good quality from zoomLevel 9 (resolution 1200)
-          tileGrid: ol.tilegrid.createXYZ({minZoom: 4, maxZoom: 14 }), //, resolutions: resolutions}),
+          tileGrid: ol.tilegrid.createXYZ({minZoom: 4, maxZoom: 14 }),
           attributions: "&copy; OpenMapTiles &copy; OpenStreetMap contributors"
         }),
         minResolution: 0,
 //        maxResolution: 1200 for zoomLevel 9
+
         style: function(feature, resolution) {
 //          if (resolution >= 10 && feature.get('layer') == "landuse" && feature.get("class") == "residential") {
 //            return transparentStyle;
@@ -72,30 +69,31 @@
       // big change 8.4 463 > 8.42 458, also 12 - 13 (31-27 resolution)
       landUseLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
 
-      var cols = [ "#b58900", "#cb4b16", "#dc322f", "#d33682", "#6c71c4", "#268bd2", "#2aa198", "#859900"];
+//      var sevencols = ['#e41a1c','#377eb8','#4daf4a','#984ea3','#ff7f00','#ffff33','#a65628'];
+      var sevencols = [[228,26,28], [55,126,184], [77,175,74], [152,78,163], [255,127,0], [255,255,51], [166,86,40]];
 
       function communityStyle(feature, resolution) {
         return new ol.style.Style({
           fill: new ol.style.Fill({
-            color: cols[feature.get("color7")] // starts at 1
+            color: sevencols[feature.get("color7") - 1]
           })
         });
       }
 
-      var gadmSource = new ol.source.VectorTile({
-        url: "/gadm-vector-tiles/{z}/{x}/{y}.pbf",
+      var communitySource = new ol.source.VectorTile({
+        url: "../osm-admin-boundary-vector-tiles/{z}/{x}/{y}.pbf",
         format: new ol.format.MVT(),
-        maxZoom: 10
+        maxZoom: 11
       });
 
       var communityLayer = new ol.layer.VectorTile({
-        source: gadmSource,
+        source: communitySource,
         style: communityStyle
       });
-      communityLayer.on("precompose", function(evt) {evt.context.globalCompositeOperation = "source-atop" });
+      communityLayer.on("precompose", function(evt) {evt.context.globalCompositeOperation = "source-in" });
 
       var labelLayer = new ol.layer.VectorTile({
-        source: gadmSource,
+        source: communitySource,
         style: (function() {
           var style = new ol.style.Style({
             text: new ol.style.Text({
@@ -104,13 +102,13 @@
             })
           });
           return function(feature, resolution) {
-            style.getText().setText(feature.get("gadm34_0.NAME_0"));
-            // TODO set stroke to outline colour
+            style.getText().setText(feature.get("locname"));
+            // currently just writing it in ghostly white, but many other
+            // variations possible (e.g. set text stroke to community colour?)
             return style;
           }
         })()
       });
-      // destination-out also cool
       labelLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-atop" });
 
       var backgroundLayer = new ol.layer.Tile({
@@ -123,9 +121,10 @@
       // background drawn behind polygons
       backgroundLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "destination-over" });
 
-      var zoom = 5;
-      var center = ol.proj.fromLonLat([8.0, 48.1]);
+      var zoom = 2;
+      var center = ol.proj.fromLonLat([0, 0]);
       var rotation = 0;
+
       if (window.location.hash !== '') {
         // try to restore center, zoom-level and rotation from the URL
         var hash = window.location.hash.replace('#map=', '');
@@ -147,7 +146,9 @@
         ],
         target: 'map',
         view: new ol.View({
+          projection: "EPSG:3857",
           zoom: zoom,
+//          extent: [-20037508.342789244, -9608371.50993366, 20037508.342789244, 19971868.88040853],
           center: center,
           rotation: rotation,
           minZoom: 2,
@@ -155,16 +156,27 @@
         })
       });
 
+      function goTo(zoom, lon, lat, rotation) {
+        map.getView().setZoom(zoom);
+        map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
+        map.getView().setRotation(rotation);
+      }
+
+      var resolutionThresholds = [20, 100, 500, 3000, 4000, Infinity];
+      var opacityLevels = [0.35, 0.4, 0.5, 0.6, 0.8, 1.0];
+
       map.on("moveend", function(evt) {
-        // /4/ path shows residential at resolution 4891.96981025128, from zoomLevel 4.44
-//        console.log(map.getView().getZoom());
-//        console.log(map.getView().getResolution());
         var view = map.getView();
+
+        // change population density opacity depending on zoomlevel
+        var i = resolutionThresholds.findIndex(function(threshold) { return view.getResolution() < threshold });
+        densityLayer.setOpacity(opacityLevels[i]);
+
         var center = ol.proj.toLonLat(view.getCenter());
         var hash = "#map=" + Math.round(view.getZoom()) + "/" + (Math.round(center[0]*1000) / 1000) + "/" + (Math.round(center[1]*1000) / 1000) + "/" + view.getRotation();
         location.hash = hash;
       });
     </script>
-    <p>On most political maps produced in modern times, nation states and other geo-political bodies are shown as contiguous (filled-in) areas that span all the way to where they border their adjacent regions. What such depictions represent is really the theoretical extent of the territory over which a government claims <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, whether it is actually exercised or not. Questions such as which country or state is "the biggest" are vacuous when large swathes of the claimed area are completely uninhabited and uncontrolled. This map explores an arguably more accurate way of representing countries in social terms, by highlighting only those areas inhabited by people who consider themselves members of the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> that is their nation.</p>
+    <p>On most political maps produced in modern times, nation states and other geo-political bodies are shown as contiguous (filled-in) areas that span all the way to where they border their adjacent regions. What such depictions represent is really the theoretical extent of the territory over which a government claims <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, whether this authority is actually exercised or not. Questions such as which country or state is "the biggest" are misleading when large swathes of the claimed area are completely uninhabited and uncontrolled. This map explores a more meaningful way of conceiving of a nation in social terms, namely as the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> of individuals who perceive themselves to belong to the same country. Only colouring in the areas where there is actual human habitation reveals that not all borders are alike: ones that look abrupt can be <a href="#map" onclick="goTo(13, -117.05, 32.54, 0)" target="_self">strictly guarded</a>, highly permeable or downright <a href="#map" onclick="goTo(14, 4.93, 51.44, 0)" target="_self">unmaintainable</a>, while more <em>frontier</em>-like border regions can also be more or <a href="#map" onclick="goTo(9, 11.31, 46.94, 0)" target="_self">less</a> penetrable.</p>
   </body>
 </html>
