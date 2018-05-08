@@ -15,21 +15,37 @@
     <script src="https://cdn.polyfill.io/v2/polyfill.min.js?features=requestAnimationFrame,Element.prototype.classList,URL"></script>
     <script src="https://openlayers.org/en/v4.6.5/build/ol.js"></script>
     <style>
+      body {
+        font-family: sans-serif;
+        width: 90%;
+        margin: auto;
+        text-align: justify;
+      }
       .map {
         width: 80%;
         margin: auto;
+        padding: 20px;
       }
-      body {
-        font-family: sans-serif;
+      .right {
+        text-align: right;
+      }
+      #southup {
+        display: block;
+        width: 80%;
+        margin: auto;
       }
     </style>
   </head>
   <body>
     <div id="map" class="map"></div>
+    <label id="southup" class="right"><input id="southbox" type="checkbox">south up!</label>
+
     <script>
+      var southbox = document.getElementById("southbox");
+
       var opaqueStyle = new ol.style.Style({
         fill: new ol.style.Fill({
-            color: "#000b"
+            color: "#000a"
         })
       });
 
@@ -83,7 +99,7 @@
       var communitySource = new ol.source.VectorTile({
         url: "../osm-admin-boundary-vector-tiles/{z}/{x}/{y}.pbf",
         format: new ol.format.MVT(),
-        maxZoom: 11
+        maxZoom: 10
       });
 
       var communityLayer = new ol.layer.VectorTile({
@@ -132,7 +148,11 @@
         if (parts.length === 4) {
           zoom = parseInt(parts[0], 10);
           center = ol.proj.fromLonLat([parseFloat(parts[1]), parseFloat(parts[2])]);
-          rotation = parseFloat(parts[3]);
+          rotation = parseInt(parts[3], 10);
+          if (rotation == 180) {
+            southbox.checked = true;
+          }
+          rotation = rotation * Math.PI / 180;
         }
       }
 
@@ -156,10 +176,18 @@
         })
       });
 
-      function goTo(zoom, lon, lat, rotation) {
+      function goTo(zoom, lon, lat) {
         map.getView().setZoom(zoom);
         map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
-        map.getView().setRotation(rotation);
+//        map.getView().setRotation(rotation);
+      }
+
+      southbox.onchange = function() {
+        if (southbox.checked) {
+          map.getView().setRotation(Math.PI);
+        } else {
+          map.getView().setRotation(0);
+        }
       }
 
       var resolutionThresholds = [20, 100, 500, 3000, 4000, Infinity];
@@ -173,10 +201,18 @@
         densityLayer.setOpacity(opacityLevels[i]);
 
         var center = ol.proj.toLonLat(view.getCenter());
-        var hash = "#map=" + Math.round(view.getZoom()) + "/" + (Math.round(center[0]*1000) / 1000) + "/" + (Math.round(center[1]*1000) / 1000) + "/" + view.getRotation();
+        var hash = "#map=" + Math.round(view.getZoom()) + "/" + (Math.round(center[0]*1000) / 1000) + "/" + (Math.round(center[1]*1000) / 1000) + "/" + Math.round(view.getRotation() * 180 / Math.PI);
         location.hash = hash;
+        // TODO uncheck southbox
+//        gtag("event", "move", {"value": view.getZoom(), "metric1": view.getRotation()});
       });
     </script>
-    <p>On most political maps produced in modern times, nation states and other geo-political bodies are shown as contiguous (filled-in) areas that span all the way to where they border their adjacent regions. What such depictions represent is really the theoretical extent of the territory over which a government claims <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, whether this authority is actually exercised or not. Questions such as which country or state is "the biggest" are misleading when large swathes of the claimed area are completely uninhabited and uncontrolled. This map explores a more meaningful way of conceiving of a nation in social terms, namely as the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> of individuals who perceive themselves to belong to the same country. Only colouring in the areas where there is actual human habitation reveals that not all borders are alike: ones that look abrupt can be <a href="#map" onclick="goTo(13, -117.05, 32.54, 0)" target="_self">strictly guarded</a>, highly permeable or downright <a href="#map" onclick="goTo(14, 4.93, 51.44, 0)" target="_self">unmaintainable</a>, while more <em>frontier</em>-like border regions can also be more or <a href="#map" onclick="goTo(9, 11.31, 46.94, 0)" target="_self">less</a> penetrable.</p>
+    <p>On maps produced in modern times, nation states and other geo-political bodies are typically shown as homogeneous areas that extend all the way to their well-defined boundary lines, where they meet up with bordering nations or the sea. What such depictions represent is really the <em>theoretical</em> extent of the territory over which a government claims <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, independently of whether (or how much) this authority is actually exercised. Questions such as which country or state is "the biggest" are misleading, in that they don't consider that large swathes of the claimed area might be of little interest to humans, and therefore completely uninhabited and uncontrolled. This map explores a more meaningful way of conceiving of a nation in social terms, namely as the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> of individuals who consider themselves to belong to the same country. Only colouring in areas where there is actual human habitation reveals that not all borders are alike: ones that look abrupt can be <a href="#map" onclick="goTo(13, -117.05, 32.54)" target="_self">strictly policed</a>, highly permeable, <a href="#map" onclick="goTo(11, -122.93, 48.98)" target="_self">awkwardly arbitrary</a> or downright <a href="#map" onclick="goTo(14, 4.93, 51.44)" target="_self">unenforceable</a>, while more <em>frontier</em>-like border regions can also be more or <a href="#map" onclick="goTo(9, 11.31, 46.94)" target="_self">less</a> penetrable.</p><!-- 11/-8.61/41.99 -->
+    <div class="right"><a href="/"><img src="https://img.shields.io/badge/about-me-lightgrey.svg" title="about me"/></a>
+      <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=2JE6FCBYY94LJ"><img src="https://img.shields.io/badge/donate-paypal%20($)-blue.svg" /></a> <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=WKKFFM6D7ZHEE"><img src="https://img.shields.io/badge/donate-paypal%20(%E2%82%AC)-blue.svg" /></a></div>
+    <!--h2>Reading</h2>
+
+    <p></p-->
+
   </body>
 </html>
