@@ -70,9 +70,15 @@
         attributions: "&copy; OpenMapTiles &copy; OpenStreetMap contributors"
       });
 
+      var transparentStyle = new ol.style.Style({
+        fill: new ol.style.Fill({
+            color: "#0004"
+        })
+      });
+
       var buildingStyle = new ol.style.Style({
         fill: new ol.style.Fill({
-            color: "#000a"
+            color: "#0007"
         })
       });
 
@@ -81,23 +87,23 @@
         source: openMapTiles,
         // landuse included from zoomLevel 4 (resolution 15000), good quality from zoomLevel 9 (resolution 1200)
         minResolution: 0,
-        maxResolution: 1200,// for zoomLevel 9
+        maxResolution: 310,// for zoomLevel 9
 
         style: function(feature, resolution) {
-//          if (resolution >= 10 && feature.get('layer') == "landuse" && feature.get("class") == "residential") {
-//            return transparentStyle;
-//          } else
-          if (resolution < 20 && feature.get('layer') == "building") {
-//            console.log(resolution); // buildings visible from zoomLevel 12 (resolution 20)
+          if (feature.get("layer") == "landuse" && feature.get("class") == "residential") {
+            if (resolution >= 20) {
+              return buildingStyle;
+            } else {
+              return transparentStyle;
+            }
+          } else if (resolution < 40 && feature.get("layer") == "building") {
+            // buildings visible from zoomLevel 12
             return buildingStyle;
           }
         }
       });
-//      console.log(landUseLayer.getSource().getTileGrid().getResolutions());
-      // big change 8.4 463 > 8.42 458, also 12 - 13 (31-27 resolution)
       landUseLayer.on("precompose", function(evt) { evt.context.globalCompositeOperation = "source-over" });
 
-//      var sevencols = [[228,26,28], [55,126,184], [77,175,74], [152,78,163], [255,127,0], [255,255,51], [166,86,40]];
       var sevencols = [[0, 130, 200], [215, 170, 48], [125, 30, 140], [60, 160, 75], [220, 110, 40], [128, 0, 0], [148, 158, 0]];
       var communityStyles = sevencols.map(function(col) {
         return new ol.style.Style({
@@ -124,7 +130,9 @@
       var waterLayer = new ol.layer.VectorTile({
         source: openMapTiles,
         style: function(feature, resolution) {
-          if (feature.get("layer") == "water") {
+          if (feature.get("layer") == "water" ||
+             (feature.get("layer") == "park" && feature.get("class") == "nature_reserve") ||
+             (feature.get("layer") == "landcover" && feature.get("class") == "wetland")) {
             return opaqueStyle;
           }
         }
@@ -203,6 +211,7 @@
         }
       }
 
+      var untouched = true;
       var map = new ol.Map({
         layers: [
           densityLayer,
@@ -238,18 +247,22 @@
       }
 
       southbox.onchange = function() {
+        gtag("event", "southup", {"event_label": location.hash, "value": southbox.checked ? 1 : 0});
         if (southbox.checked) {
           map.getView().setRotation(Math.PI);
         } else {
           map.getView().setRotation(0);
         }
-        gtag("event", "southup", {"value": southbox.checked});
       }
 
-      var resolutionThresholds = [20, 100, 500, 3000, 4000, Infinity];
-      var opacityLevels = [0.35, 0.4, 0.5, 0.6, 0.8, 1.0];
+      var resolutionThresholds = [10, 20, 100, 500, 3000, 4000, Infinity];
+      var opacityLevels = [0.2, 0.35, 0.4, 0.5, 0.6, 0.8, 1.0];
 
       map.on("moveend", function(evt) {
+        if (untouched) {
+          untouched = false;
+          return;
+        }
         var view = map.getView();
 
         // change population density opacity depending on zoomlevel
@@ -257,13 +270,16 @@
         densityLayer.setOpacity(opacityLevels[i]);
 
         var center = ol.proj.toLonLat(view.getCenter());
-        var hash = "#map=" + Math.round(view.getZoom()) + "/" + (Math.round(center[0]*1000) / 1000) + "/" + (Math.round(center[1]*1000) / 1000) + "/" + Math.round(view.getRotation() * 180 / Math.PI);
+        var lon = Math.round(center[0]*1000) / 1000;
+        var lat = Math.round(center[1]*1000) / 1000;
+        var rot = Math.round(view.getRotation() * 180 / Math.PI);
+        var hash = "#map=" + Math.round(view.getZoom()) + "/" + lon + "/" + lat + "/" + rot;
         location.hash = hash;
         // TODO uncheck southbox
-        gtag("event", "move", {"value": hash});
+        gtag("event", "move", {"event_label": hash, "value": Math.round(view.getZoom()), "metric1": view.getZoom(), "metric2": lon, "metric3": lat, "metric4": rot });
       });
     </script>
-    <p>On maps produced in modern times, nation states and other geo-political bodies are typically shown as homogeneous slabs that extend all the way to where they meet up with either neighbouring nations or the sea, resulting in well-defined border outlines. What such depictions represent is really the <em>theoretical</em> extent of the territory over which a government claims <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, independently of whether (or how much) this authority is actually exercised. Questions such as which country or state is "the biggest" are misleading in that they don't acknowledge that large swathes of the claimed area might be of little interest to humans, and therefore completely uninhabited and uncontrolled. This map explores a more meaningful way of conceiving of a nation in social terms, namely as the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> of individuals who consider themselves to belong to the same country. Only colouring in areas where there is actual human habitation reveals that not all borders are alike: abrupt ones might follow <a href="#map" onclick="goTo(11, -8.61, 41.99)" target="_self">"natural" boundary features</a> or else require <a href="#map" onclick="goTo(13, -117.05, 32.54)" target="_self">strict policing</a> along <a href="#map" onclick="goTo(11, -122.93, 48.98)" target="_self">awkwardly arbitrary</a> or downright <a href="#map" onclick="goTo(14, 4.93, 51.44)" target="_self">unenforceable</a> boundary lines, while more <em>frontier</em>-like border regions can also be more or <a href="#map" onclick="goTo(9, 11.31, 46.94)" target="_self">less</a> penetrable in nature.</p><!-- imperceptible: goTo(13, -101.52, 49) -->
+    <p>On maps produced in modern times, nation states and other geo-political bodies are typically shown as homogeneous slabs that extend all the way to where they meet up with either neighbouring nations or the sea, resulting in well-defined border outlines. What such depictions represent is really the <em>theoretical</em> extent of the territory over which a government claims <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, independently of whether (or how much) this authority is actually exercised. Questions such as which country or state is "the biggest" are misleading in that they don't acknowledge that large swathes of the claimed area might be of little interest to humans, and therefore completely uninhabited and uncontrolled. This map explores a more meaningful way of conceiving of a nation in social terms, namely as the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> of individuals who consider themselves to belong to the same country. The map only colours in areas where there is actual human habitation, revealing that not all borders are alike: abrupt ones might follow <a href="#map" onclick="goTo(11, -8.61, 41.99)" target="_self">"natural" boundary features</a> or else require <a href="#map" onclick="goTo(13, -117.05, 32.54)" target="_self">strict policing</a> along <a href="#map" onclick="goTo(11, -122.93, 48.98)" target="_self">awkwardly arbitrary</a> or downright <a href="#map" onclick="goTo(14, 4.93, 51.44)" target="_self">unenforceable</a> boundary lines, while more <em>frontier</em>-like border regions can also be more or <a href="#map" onclick="goTo(9, 11.31, 46.94)" target="_self">less</a> penetrable in nature.</p><!-- imperceptible: goTo(13, -101.52, 49) -->
     <div class="right"><a href="/"><img src="https://img.shields.io/badge/about-me-lightgrey.svg" alt="about me" title="about me"/></a> <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=2JE6FCBYY94LJ"><img src="https://img.shields.io/badge/donate-paypal%20($)-blue.svg" alt="Donate US Dollars" title="thank you for chipping in for hosting costs!" /></a> <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=WKKFFM6D7ZHEE"><img src="https://img.shields.io/badge/donate-paypal%20(%E2%82%AC)-blue.svg" alt="Donate Euro" title="thank you for chipping in for hosting costs!" /></a></div>
     <!--h2>Reading</h2>
 
