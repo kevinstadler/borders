@@ -57,7 +57,7 @@
       var densityLayer = new ol.layer.Tile({
         source: new ol.source.XYZ({
           url: "../gpw-tiles/{z}/{x}/{-y}.png",
-          attributions: "NASA Socioeconomic Data and Applications Center (SEDAC)",
+          attributions: '(<a href="https://creativecommons.org/licenses/by/4.0/">CC-BY-4.0</a>)&nbsp;NASA Socioeconomic Data and Applications Center&nbsp;(SEDAC)',
           maxZoom: 7
         })
       });
@@ -67,7 +67,7 @@
         url: "https://free.tilehosting.com/data/v3/{z}/{x}/{y}.pbf.pict?key=qu62rKisigsebPda2e6b",
         format: new ol.format.MVT(),
         tileGrid: ol.tilegrid.createXYZ({minZoom: 1, maxZoom: 14 }),
-        attributions: "&copy; OpenMapTiles &copy; OpenStreetMap contributors"
+        attributions: "&copy;&nbsp;OpenMapTiles &copy;&nbsp;OpenStreetMap contributors"
       });
 
       var transparentStyle = new ol.style.Style({
@@ -259,15 +259,15 @@
       var opacityLevels = [0.2, 0.35, 0.4, 0.5, 0.6, 0.8, 1.0];
 
       map.on("moveend", function(evt) {
+        // set population density opacity depending on zoomlevel
+        var view = map.getView();
+        var i = resolutionThresholds.findIndex(function(threshold) { return view.getResolution() < threshold });
+        densityLayer.setOpacity(opacityLevels[i]);
+
         if (untouched) {
           untouched = false;
           return;
         }
-        var view = map.getView();
-
-        // change population density opacity depending on zoomlevel
-        var i = resolutionThresholds.findIndex(function(threshold) { return view.getResolution() < threshold });
-        densityLayer.setOpacity(opacityLevels[i]);
 
         var center = ol.proj.toLonLat(view.getCenter());
         var lon = Math.round(center[0]*1000) / 1000;
