@@ -257,7 +257,7 @@
         map.getView().setZoom(zoom);
         map.getView().setCenter(ol.proj.fromLonLat([lon, lat]));
         gtag("event", "goto", {"event_label": location.hash, "value": zoom, "metric1": zoom,
-          "metric2": lon, "metric3": lat, "metric4": Math.round(view.getRotation() * 180 / Math.PI) });
+          "metric2": lon, "metric3": lat, "metric4": Math.round(map.getView().getRotation() * 180 / Math.PI) });
       }
 
       labels.onchange = function() {
