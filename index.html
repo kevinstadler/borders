@@ -17,13 +17,13 @@
     <style>
       body {
         font-family: sans-serif;
-        width: 90%;
+        width: 80%;
+        line-height: 135%;
         margin: auto;
         text-align: justify;
         padding: 10px;
       }
       .map {
-        width: 80%;
         margin: auto;
         padding: 10px;
       }
@@ -36,6 +36,10 @@
         content: "\1F4CD";
         font-size: small;
         display: inline-block;
+      }
+      p,ul,h4,.limit {
+        max-width: 40em;
+        margin: 15px auto;
       }
       ul {
         list-style-type: none;
@@ -57,7 +61,7 @@
     <div id="map" class="map">
       <noscript><img src="thumbnail.png" alt="static image of the map which requires javascript to run interactively" title="if you enable javascript, an interactive map will be displayed here!" /></noscript>
     </div>
-    <div class="right" style="width:80%"><label><input id="labels" type="checkbox" checked>show place names</label> <label id="southup"><input id="southbox" type="checkbox">south up!</label></div>
+    <div class="right" style="width: 80%"><label><input id="labels" type="checkbox" checked>show place names</label> <label id="southup"><input id="southbox" type="checkbox">south up!</label></div>
 
     <script>
       var labels = document.getElementById("labels");
@@ -298,9 +302,9 @@
         gtag("event", "move", {"event_label": hash, "value": Math.round(view.getZoom()), "metric1": view.getZoom(), "metric2": lon, "metric3": lat, "metric4": rot });
       });
     </script>
-    <p>On most political maps produced in modern times, nation states and other geo-political bodies are represented as <a href="https://www.google.com/search?tbm=isch&q=world+map">homogeneous slabs</a> that have no internal structure: the inner city of the capital is as much part of the country as its most deserted hinterland. The country extends uniformly all the way to its well-defined border, where it meets up with either neighbouring nations or the sea. What such maps show is really the extent of the territory over which a government <em>claims</em> <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, independently of whether (or how much) this authority is actually exercised. But what does it really mean for a country or state to be "the biggest" when large swathes of its territory are of little human interest, and therefore completely uninhabited and uncontrolled? And what does it mean for a country to have "the most inhabitants", if the population centers are separated by thousands of miles of desert?</p>
+    <p>On most political maps produced in modern times, nation states and other geo-political bodies are represented as <a href="https://www.google.com/search?tbm=isch&q=world+map">homogeneous slabs</a> that have no internal structure: the inner city of the capital is as much part of the country as its most deserted hinterland. The country extends uniformly all the way to its well-defined border, where it meets up with either neighbouring nations or the sea. What such maps show is really the extent of the territory over which a government <em>claims</em> <a href="https://en.wikipedia.org/wiki/Sovereignty">sovereign</a> authority, independently of whether (or how much) this authority is actually exercised. But what does it really mean for a country or state to be "the biggest" when large swathes of its territory are of little human interest, and therefore completely uninhabited or uncontrolled? And what does it mean for a country to have "the most inhabitants", if its population centers are separated by thousands of miles of desert?</p>
     <p>This map explores a more meaningful way of conceiving of a nation in <em>social</em> terms, as the <a href="https://en.wikipedia.org/wiki/Imagined_community">imagined community</a> of all individuals who consider themselves to belong to the same nation<!-- -->. Instead of representing a country as a uniform territory, the map only considers areas that are actually inhabited by humans, shaded according to their population density. Apart from highlighting that there are big differences in the internal structure of the world's nations, it also reveals that not all borders are alike: abrupt ones might follow <a class="goto" href="#map" onclick="goTo(11, -8.61, 41.99)" target="_self">"natural" boundary features</a> or require <a class="goto" href="#map" onclick="goTo(13, -117.05, 32.54)" target="_self">strict policing</a> along <a class="goto" href="#map" onclick="goTo(11, -122.93, 48.98)" target="_self">awkwardly arbitrary</a> or downright <a class="goto" href="#map" onclick="goTo(14, 4.93, 51.44)" target="_self">unenforceable</a> boundary lines, while more <em>frontier</em>-like border regions can also be more or <a class="goto" href="#map" onclick="goTo(9, 11.31, 46.94)" target="_self">less</a> penetrable in nature.</p><!-- imperceptible: goTo(13, -101.52, 49) -->
-    <div class="right">
+    <div class="right limit">
       <a href="#details" target="_self" onclick="document.getElementById('details').style.display = 'block';gtag('event', 'details')"><img src="https://img.shields.io/badge/technical-details-green.svg" alt="technical details" title="technical details"/></a>
       <a href="/"><img src="https://img.shields.io/badge/about-me-lightgrey.svg" alt="about me" title="about me"/></a>
       <a href="https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=2JE6FCBYY94LJ"><img src="https://img.shields.io/badge/donate-paypal%20($)-blue.svg" alt="Donate US Dollars" title="thank you for chipping in for hosting costs!" /></a>
